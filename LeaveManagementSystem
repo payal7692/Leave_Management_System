@@ -1,0 +1,524 @@
+import java.util.*;
+
+// Leave types
+enum LeaveType {
+    CASUAL, SICK, EARNED
+}
+
+// Leave request status
+enum LeaveStatus {
+    PENDING, APPROVED, REJECTED
+}
+
+// Custom exception: employee not found
+class EmployeeNotFoundException extends Exception {
+    EmployeeNotFoundException(String message) {
+        super(message);
+    }
+}
+
+// Custom exception: insufficient leave
+class InsufficientLeaveException extends Exception {
+    InsufficientLeaveException(String message) {
+        super(message);
+    }
+}
+
+// Parent class
+class Employee {
+    private String employeeId;
+    private String employeeName;
+    private String department;
+    private String email;
+    private int availableLeaveBalance;
+
+    protected String employeeType;
+
+    Employee(String id, String name, String dept,
+             String email, int balance) {
+        this.employeeId = id;
+        this.employeeName = name;
+        this.department = dept;
+        this.email = email;
+        this.availableLeaveBalance = balance;
+        this.employeeType = "Employee";
+    }
+
+    public String getEmployeeId() {
+        return employeeId;
+    }
+
+    public String getEmployeeName() {
+        return employeeName;
+    }
+
+    public String getDepartment() {
+        return department;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public int getAvailableLeaveBalance() {
+        return availableLeaveBalance;
+    }
+
+    public void setEmployeeName(String name) {
+        employeeName = name;
+    }
+
+    public void setDepartment(String dept) {
+        department = dept;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public void setAvailableLeaveBalance(int balance) {
+        if (balance >= 0) {
+            availableLeaveBalance = balance;
+        }
+    }
+
+    public String getEmployeeType() {
+        return employeeType;
+    }
+
+    public void displayDetails() {
+        System.out.println("Employee ID : " + employeeId);
+        System.out.println("Employee Name : " + employeeName);
+        System.out.println("Department : " + department);
+        System.out.println("Email : " + email);
+        System.out.println("Leave Balance : " + availableLeaveBalance);
+        System.out.println("Employee Type : " + getEmployeeType());
+    }
+}
+
+// Child class
+class PermanentEmployee extends Employee {
+    PermanentEmployee(String id, String name, String dept,
+                      String email, int balance) {
+        super(id, name, dept, email, balance);
+        this.employeeType = "Permanent";
+    }
+
+    @Override
+    public String getEmployeeType() {
+        return "Permanent";
+    }
+}
+
+// Child class
+class ContractEmployee extends Employee {
+    ContractEmployee(String id, String name, String dept,
+                     String email, int balance) {
+        super(id, name, dept, email, balance);
+        this.employeeType = "Contract";
+    }
+
+    @Override
+    public String getEmployeeType() {
+        return "Contract";
+    }
+}
+
+// Leave request class
+class LeaveRequest {
+    private String requestId;
+    private String employeeId;
+    private LeaveType leaveType;
+    private int numberOfDays;
+    private String reason;
+    private LeaveStatus status;
+
+    LeaveRequest(String requestId, String employeeId,
+                 LeaveType leaveType, int days, String reason) {
+        this.requestId = requestId;
+        this.employeeId = employeeId;
+        this.leaveType = leaveType;
+        this.numberOfDays = days;
+        this.reason = reason;
+        this.status = LeaveStatus.PENDING;
+    }
+
+    public String getRequestId() {
+        return requestId;
+    }
+
+    public String getEmployeeId() {
+        return employeeId;
+    }
+
+    public LeaveType getLeaveType() {
+        return leaveType;
+    }
+
+    public int getNumberOfDays() {
+        return numberOfDays;
+    }
+
+    public LeaveStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(LeaveStatus status) {
+        this.status = status;
+    }
+
+    public void displayRequest() {
+        System.out.println("Request ID : " + requestId);
+        System.out.println("Employee ID : " + employeeId);
+        System.out.println("Leave Type : " + leaveType);
+        System.out.println("Days : " + numberOfDays);
+        System.out.println("Reason : " + reason);
+        System.out.println("Status : " + status);
+        System.out.println("--------------------------");
+    }
+}
+
+// Main management class
+class LeaveManagementSystem {
+
+    private List<Employee> employees = new ArrayList<>();
+    private Set<String> emails = new HashSet<>();
+    private Map<String, Employee> employeeMap = new HashMap<>();
+    private List<LeaveRequest> requests = new ArrayList<>();
+
+    private int nextRequestNumber = 1001;
+
+    // Add employee
+    public void addEmployee(Employee employee) {
+        String id = employee.getEmployeeId();
+        String email = employee.getEmail().toLowerCase();
+
+        if (employeeMap.containsKey(id)) {
+            throw new IllegalArgumentException("Duplicate employee ID.");
+        }
+
+        if (emails.contains(email)) {
+            throw new IllegalArgumentException("Duplicate email.");
+        }
+
+        if (employee.getAvailableLeaveBalance() < 0) {
+            throw new IllegalArgumentException("Leave balance cannot be negative.");
+        }
+
+        employees.add(employee);
+        employeeMap.put(id, employee);
+        emails.add(email);
+
+        System.out.println("Employee added successfully.");
+    }
+
+    // Display employees using Iterator
+    public void displayEmployees() {
+        if (employees.isEmpty()) {
+            System.out.println("No employees available.");
+            return;
+        }
+
+        Iterator<Employee> it = employees.iterator();
+
+        while (it.hasNext()) {
+            Employee e = it.next();
+            e.displayDetails();
+            System.out.println("--------------------------");
+        }
+    }
+
+    // Search employee
+    public Employee searchEmployee(String id)
+            throws EmployeeNotFoundException {
+
+        Employee e = employeeMap.get(id);
+
+        if (e == null) {
+            throw new EmployeeNotFoundException(
+                "Error: Employee " + id + " does not exist.");
+        }
+
+        return e;
+    }
+
+    // Apply leave with a reason
+    public void applyLeave(String id, String type,
+                           int days, String reason)
+            throws EmployeeNotFoundException,
+                   InsufficientLeaveException {
+
+        if (days <= 0) {
+            throw new IllegalArgumentException(
+                "Leave days must be greater than 0.");
+        }
+
+        Employee e = searchEmployee(id);
+
+        if (days > e.getAvailableLeaveBalance()) {
+            throw new InsufficientLeaveException(
+                "Insufficient leave balance. Available: "
+                + e.getAvailableLeaveBalance()
+                + ", Requested: " + days);
+        }
+
+        LeaveType leaveType = LeaveType.valueOf(type.toUpperCase());
+
+        String requestId = "LR" + nextRequestNumber;
+        nextRequestNumber++;
+
+        LeaveRequest request = new LeaveRequest(
+            requestId, id, leaveType, days, reason);
+
+        requests.add(request);
+
+        System.out.println("Leave request created successfully.");
+        System.out.println("Request ID: " + requestId);
+        System.out.println("Status: PENDING");
+    }
+
+    // Method overloading: apply leave without a reason
+    public void applyLeave(String id, String type, int days)
+            throws EmployeeNotFoundException,
+                   InsufficientLeaveException {
+        applyLeave(id, type, days, "No reason provided");
+    }
+
+    // Find leave request
+    private LeaveRequest searchRequest(String id) {
+        for (LeaveRequest r : requests) {
+            if (r.getRequestId().equalsIgnoreCase(id)) {
+                return r;
+            }
+        }
+
+        return null;
+    }
+
+    // Approve leave
+    public void approveLeave(String id)
+            throws EmployeeNotFoundException,
+                   InsufficientLeaveException {
+
+        LeaveRequest r = searchRequest(id);
+
+        if (r == null) {
+            throw new IllegalArgumentException("Request not found.");
+        }
+
+        if (r.getStatus() != LeaveStatus.PENDING) {
+            throw new IllegalArgumentException(
+                "This request has already been processed.");
+        }
+
+        Employee e = searchEmployee(r.getEmployeeId());
+
+        int days = r.getNumberOfDays();
+        int balance = e.getAvailableLeaveBalance();
+
+        if (days > balance) {
+            throw new InsufficientLeaveException(
+                "Insufficient leave balance.");
+        }
+
+        e.setAvailableLeaveBalance(balance - days);
+        r.setStatus(LeaveStatus.APPROVED);
+
+        System.out.println("Leave Request Approved.");
+        System.out.println("Employee ID : " + e.getEmployeeId());
+        System.out.println("Previous Balance: " + balance);
+        System.out.println("Leave Used : " + days);
+        System.out.println("Remaining Leave : "
+                + e.getAvailableLeaveBalance());
+    }
+
+    // Reject leave
+    public void rejectLeave(String id) {
+        LeaveRequest r = searchRequest(id);
+
+        if (r == null) {
+            throw new IllegalArgumentException("Request not found.");
+        }
+
+        if (r.getStatus() != LeaveStatus.PENDING) {
+            throw new IllegalArgumentException(
+                "This request has already been processed.");
+        }
+
+        r.setStatus(LeaveStatus.REJECTED);
+        System.out.println("Leave request rejected.");
+        System.out.println("Employee leave balance is unchanged.");
+    }
+
+    // Display all requests
+    public void displayRequests() {
+        if (requests.isEmpty()) {
+            System.out.println("No leave requests available.");
+            return;
+        }
+
+        for (LeaveRequest r : requests) {
+            r.displayRequest();
+        }
+    }
+
+    // Display leave balance
+    public void displayBalance(String id)
+            throws EmployeeNotFoundException {
+
+        Employee e = searchEmployee(id);
+
+        System.out.println("Employee ID: " + e.getEmployeeId());
+        System.out.println("Employee Name: " + e.getEmployeeName());
+        System.out.println("Available Leave: "
+                + e.getAvailableLeaveBalance());
+    }
+}
+
+// Program execution starts here
+public class LeaveManagement {
+
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        LeaveManagementSystem system = new LeaveManagementSystem();
+
+        int choice = 0;
+
+        do {
+            try {
+                System.out.println("\n===== EMPLOYEE LEAVE MANAGEMENT =====");
+                System.out.println("1. Add Employee");
+                System.out.println("2. Display All Employees");
+                System.out.println("3. Search Employee");
+                System.out.println("4. Apply Leave");
+                System.out.println("5. Approve Leave");
+                System.out.println("6. Reject Leave");
+                System.out.println("7. Display All Leave Requests");
+                System.out.println("8. Display Employee Leave Balance");
+                System.out.println("9. Exit");
+                System.out.print("Enter your choice: ");
+
+                choice = Integer.parseInt(sc.nextLine());
+
+                switch (choice) {
+                    case 1:
+                        System.out.print("Enter Employee ID: ");
+                        String id = sc.nextLine().trim();
+
+                        System.out.print("Enter Employee Name: ");
+                        String name = sc.nextLine().trim();
+
+                        System.out.print("Enter Department: ");
+                        String dept = sc.nextLine().trim();
+
+                        System.out.print("Enter Email: ");
+                        String email = sc.nextLine().trim();
+
+                        System.out.print("Enter Leave Balance: ");
+                        int balance = Integer.parseInt(sc.nextLine());
+
+                        if (id.isEmpty() || name.isEmpty()
+                                || dept.isEmpty() || email.isEmpty()) {
+                            throw new IllegalArgumentException(
+                                "Fields cannot be empty.");
+                        }
+
+                        if (balance < 0) {
+                            throw new IllegalArgumentException(
+                                "Leave balance cannot be negative.");
+                        }
+
+                        System.out.print(
+                            "Employee Type (Permanent/Contract): ");
+                        String type = sc.nextLine().trim();
+
+                        Employee employee;
+
+                        if (type.equalsIgnoreCase("Permanent")) {
+                            employee = new PermanentEmployee(
+                                id, name, dept, email, balance);
+                        } else if (type.equalsIgnoreCase("Contract")) {
+                            employee = new ContractEmployee(
+                                id, name, dept, email, balance);
+                        } else {
+                            throw new IllegalArgumentException(
+                                "Invalid employee type.");
+                        }
+
+                        system.addEmployee(employee);
+                        break;
+
+                    case 2:
+                        system.displayEmployees();
+                        break;
+
+                    case 3:
+                        System.out.print("Enter Employee ID: ");
+                        system.searchEmployee(sc.nextLine().trim())
+                              .displayDetails();
+                        break;
+
+                    case 4:
+                        System.out.print("Enter Employee ID: ");
+                        String empId = sc.nextLine().trim();
+
+                        System.out.print("Enter Leave Type (CASUAL/SICK/EARNED): ");
+                        String leaveType = sc.nextLine().trim();
+
+                        System.out.print("Enter Number of Days: ");
+                        int days = Integer.parseInt(sc.nextLine());
+
+                        System.out.print("Enter Reason: ");
+                        String reason = sc.nextLine().trim();
+
+                        system.applyLeave(empId, leaveType, days, reason);
+                        break;
+
+                    case 5:
+                        System.out.print("Enter Request ID: ");
+                        system.approveLeave(sc.nextLine().trim());
+                        break;
+
+                    case 6:
+                        System.out.print("Enter Request ID: ");
+                        system.rejectLeave(sc.nextLine().trim());
+                        break;
+
+                    case 7:
+                        system.displayRequests();
+                        break;
+
+                    case 8:
+                        System.out.print("Enter Employee ID: ");
+                        system.displayBalance(sc.nextLine().trim());
+                        break;
+
+                    case 9:
+                        System.out.println("Exiting program. Thank you!");
+                        break;
+
+                    default:
+                        System.out.println("Invalid choice. Enter 1 to 9.");
+                }
+
+            } catch (EmployeeNotFoundException e) {
+                System.out.println(e.getMessage());
+
+            } catch (InsufficientLeaveException e) {
+                System.out.println("Error: " + e.getMessage());
+
+            } catch (NumberFormatException e) {
+                System.out.println("Error: Please enter a valid number.");
+
+            } catch (IllegalArgumentException e) {
+                System.out.println("Error: " + e.getMessage());
+
+            } catch (Exception e) {
+                System.out.println("Something went wrong: " + e.getMessage());
+            }
+
+        } while (choice != 9);
+
+        sc.close();
+    }
+}
